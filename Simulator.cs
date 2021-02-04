@@ -6,6 +6,7 @@ namespace WarSimulator
 {
     class Simulator
     {
+        private bool verbose = false;
         private int gameCount;
         private int playerCount;
         private Random random = new Random();
@@ -18,7 +19,7 @@ namespace WarSimulator
         List<Player> players;
         int remainingPlayers;
 
-        public Simulator(int playerCount, int gameCount)
+        public Simulator(int playerCount, int gameCount, bool verbose=false)
         {
             this.playerCount = playerCount;
             this.gameCount = gameCount;
@@ -28,10 +29,26 @@ namespace WarSimulator
         {
             for (int g = 0; g < gameCount; g++)
             {
-                Console.WriteLine("Simulating new game");
+                if (verbose) Console.WriteLine("Simulating new game");
                 InitGame();
                 gameLengths[g] = SimulateGame();
-                Console.WriteLine("Game lasted {0} rounds", gameLengths[g]);
+                if (verbose) Console.WriteLine("Game lasted {0} rounds", gameLengths[g]);
+            }
+        }
+
+        public void PrintStatistics()
+        {
+            Array.Sort(gameLengths);
+            for (int g = 0; g < gameLengths.Length; g++)
+            {
+                int sel = gameLengths[g];
+                int sum = 1;
+                while (g+sum < gameLengths.Length && gameLengths[g+sum] == sel)
+                {
+                    sum++;
+                }
+                Console.WriteLine("{0}: {1}", sel, sum);
+                g += sum-1;
             }
         }
 
@@ -41,7 +58,7 @@ namespace WarSimulator
             int rounds = 0;
             while (remainingPlayers > 1)
             {
-                Console.WriteLine("New round");
+                if (verbose) Console.WriteLine("New round");
                 rounds++;
 
                 //Start by drawing cards, players without anyting to draw are eliminated
@@ -49,9 +66,10 @@ namespace WarSimulator
                 for (int i = 0; i < remainingPlayers; i++)
                 {
                     byte card = players[i].Draw();
+                    if (verbose) Console.WriteLine("Player {0} drew {1}", players[i].id, card);
                     if (card == 0)
                     {
-                        Console.WriteLine("Player {0} out", players[i].id);
+                        if (verbose) Console.WriteLine("Player {0} out", players[i].id);
                         players.RemoveAt(i--);
                         remainingPlayers--;
                     } else
@@ -63,7 +81,7 @@ namespace WarSimulator
                     }
                 }
 
-                //Find largest no-duplicate winner
+                //Find largest no-duplicate winner and handle any wars if they are encountered
                 Player winner = null;
                 byte largest = 0;
                 List<byte> spoils = new List<byte>();
@@ -72,20 +90,118 @@ namespace WarSimulator
                     if (kvp.Value.Count == 1)
                     {
                         spoils.Add(kvp.Key);
-                        if (kvp.Key > largest) largest = kvp.Key;
-                        winner = kvp.Value[0];
+                        if (kvp.Key > largest)
+                        {
+                            largest = kvp.Key;
+                            winner = kvp.Value[0];
+                        }
+                    } else
+                    {
+                        //Found war between kvp.Value.Count number of players
+                        List<byte> warSpoils = new List<byte>(kvp.Value.Count);
+                        for (int c = 0; c < kvp.Value.Count; c++) warSpoils.Add(kvp.Key);
+                        if (War(kvp.Value, warSpoils) == null)
+                        {
+                            //No players could play the war, just split the spoils
+                            List<byte> ret = new List<byte>(1);
+                            ret.Add(kvp.Key);
+                            for (int p = 0; p < kvp.Value.Count; p++)
+                                kvp.Value[p].AddToSpoils(ret);
+                        }
                     }
                 }
-                if (winner != null) winner.AddToSpoils(spoils);
-
-                    foreach (KeyValuePair<byte, List<Player>> kvp in drawnCards)
+                if (winner != null)
                 {
-                    //textBox3.Text += ("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
-                    Console.WriteLine("Key = {0}, Value = {1}", kvp.Key, kvp.Value.Count);
+                    if (verbose) Console.WriteLine("Round winner: {0}", winner.id);
+                    winner.AddToSpoils(spoils);
                 }
 
             }
+            System.Diagnostics.Debug.Assert(players[0].hand.Count + players[0].spoils.Count == 52);
+            if (verbose) Console.WriteLine("Player {0} won the game", players[0].id);
             return rounds;
+        }
+
+        private Player War(List<Player> warPlayers, List<byte> spoils)
+        {
+            if (verbose)
+            {
+                Console.Write("New war between: [");
+                for (int i = 0; i < warPlayers.Count; i++)
+                {
+                    if (i > 0) Console.Write(", ");
+                    Console.Write(warPlayers[i].id);
+                }
+                Console.WriteLine("]");
+            }
+            Dictionary<byte, List<Player>> champions = new Dictionary<byte, List<Player>>();
+            for (int p = 0; p < warPlayers.Count; p++)
+            {
+                byte champion = warPlayers[p].Draw();
+                if (verbose) Console.WriteLine("Player {0} has champion {1}", warPlayers[p].id, champion);
+                if (champion > 0)
+                {
+                    List<Player> same;
+                    bool found = champions.TryGetValue(champion, out same);
+                    if (!found) champions.Add(champion, new List<Player>());
+                    champions[champion].Add(warPlayers[p]);
+                } else
+                {
+                    //Player have no champion and is thus eliminated
+                    warPlayers.RemoveAt(p--);
+                    continue;
+                }
+                //Draw stake
+                for (int s = 0; s < 3; s++)
+                {
+                    byte stake = warPlayers[p].Draw();
+                    if (stake > 0)
+                    {
+                        spoils.Add(stake);
+                    }
+                    else break;
+                }
+            }
+
+            //Figure out winner
+            //If there is another war, the winner of that war will take the spoils,
+            //unless there are more than 2 players and two have another war because of mathcing cards with value X
+            //and the third player has a card with value Y > X. In this case, the third player will take the spoils of
+            //this war, while the others fight the next war independently
+            Player warWinner = null;
+            byte largest = 0;
+            foreach (KeyValuePair<byte, List<Player>> kvp in champions)
+            {
+                if (kvp.Value.Count > 1)
+                {
+                    for (int i = 0; i < kvp.Value.Count; i++) spoils.Add(kvp.Key);
+                    Player nestedWinner = War(kvp.Value, new List<byte>());
+                    if (nestedWinner != null)
+                    {
+                        if (kvp.Key > largest)
+                        {
+                            largest = kvp.Key;
+                            warWinner = nestedWinner;
+                        }
+                    }
+                }
+                else
+                {
+                    spoils.Add(kvp.Key);
+                    if (kvp.Key > largest)
+                    {
+                        largest = kvp.Key;
+                        warWinner = kvp.Value[0];
+                    }
+                }
+
+            }
+            if (warWinner != null)
+            {
+                warWinner.AddToSpoils(spoils);
+                if (verbose) Console.WriteLine("Player {0} won the war", warWinner.id);
+            }
+            return warWinner;
         }
 
         private void InitGame()
@@ -129,7 +245,7 @@ namespace WarSimulator
                 for (p = 0; p < playerCount; p++)
                 {
                     players[p].hand.Push(deck[i + p]);
-                    players[p].score += deck[i + p];
+                    players[p].initialScore += deck[i + p];
                 }
             }
         }
@@ -140,7 +256,7 @@ namespace WarSimulator
         private Random random = new Random();
         public Stack<byte> hand = new Stack<byte>();
         public List<byte> spoils = new List<byte>();
-        public ushort score = 0;
+        public int initialScore = 0;
 
         public Player(int id)
         {

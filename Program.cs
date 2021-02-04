@@ -18,9 +18,21 @@ namespace WarSimulator
                 throw;
             }
 
+            bool verbose = false;
+            for (int a = 2; a < args.Length; a++)
+            {
+                switch (args[a])
+                {
+                    case "-v":
+                        verbose = true;
+                        break;
+                }
+            }
+
             Console.WriteLine("Starting simulation of {0} players playing {1} games.", playerCount, gameCount);
-            Simulator simulator = new Simulator(playerCount, gameCount);
+            Simulator simulator = new Simulator(playerCount, gameCount, verbose);
             simulator.Simulate();
+            simulator.PrintStatistics();
         }
 
         static void Usage()
