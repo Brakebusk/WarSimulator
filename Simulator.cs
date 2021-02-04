@@ -9,7 +9,6 @@ namespace WarSimulator
         private int gameCount;
         private int playerCount;
         private Random random = new Random();
-        private const ushort TARGETSCORE = 364; //[1..13]*4
 
         //Simlation statistics
         private int[] gameLengths;
@@ -63,6 +62,8 @@ namespace WarSimulator
         private void InitGame()
         {
             players = new Player[playerCount];
+            for (int i = 0; i < playerCount; i++)
+                players[i] = new Player();
 
             List<byte> deck = new List<byte>(52);
             int skip = 52 % playerCount;
@@ -94,9 +95,10 @@ namespace WarSimulator
             int p;
             for (int i = 0; i < deck.Count; i+=playerCount)
             {
-                for (p = 0; i < playerCount; p++)
+                for (p = 0; p < playerCount; p++)
                 {
                     players[p].hand.Push(deck[i + p]);
+                    players[p].score += deck[i + p];
                 }
             }
         }
@@ -104,9 +106,9 @@ namespace WarSimulator
 
     class Player {
         private Random random = new Random();
-        public Stack<byte> hand;
-        public List<byte> spoils;
-        public ushort score;
+        public Stack<byte> hand = new Stack<byte>();
+        public List<byte> spoils = new List<byte>();
+        public ushort score = 0;
 
         public byte Draw()
         {
