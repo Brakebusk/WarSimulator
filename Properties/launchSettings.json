@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WarSimulator": {
+      "commandName": "Project",
+      "commandLineArgs": "100"
+    }
+  }
+}
