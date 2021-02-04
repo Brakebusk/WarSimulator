@@ -7,38 +7,76 @@ namespace WarSimulator
     class Simulator
     {
         private int gameCount;
+        private int playerCount;
         private Random random = new Random();
+        private const ushort TARGETSCORE = 364; //[1..13]*4
+
+        //Simlation statistics
+        private int[] gameLengths;
+
 
         //Game variables
-        private byte[] p1Hand;
-        private byte[] p2Hand;
-        public Simulator(int gameCount)
+        Player[] players;
+
+        public Simulator(int playerCount, int gameCount)
         {
+            this.playerCount = playerCount;
             this.gameCount = gameCount;
+            this.gameLengths = new int[gameCount];
         }
         public void Simulate()
         {
             for (int g = 0; g < gameCount; g++)
             {
                 InitGame();
-                Console.WriteLine("[{0}]", string.Join(", ", p1Hand));
-                Console.WriteLine("[{0}]", string.Join(", ", p2Hand));
+                gameLengths[g] = SimulateGame();
             }
+        }
+
+        private int SimulateGame()
+        {
+            //Hands have already been dealt, run game until one wins
+            int rounds = 0;
+            bool existsWinner = false;
+            while (!existsWinner)
+            {
+                rounds++;
+
+                byte[] drawnCards = new byte[playerCount];
+                for (int i = 0; i < playerCount; i++)
+                {
+                    try
+                    {
+                        drawnCards[i] = players[i].Draw();
+                    } catch (RanOut e)
+                    {
+
+                    }
+                }
+
+
+
+            }
+            return rounds;
         }
 
         private void InitGame()
         {
-            p1Hand = new byte[52];
-            p2Hand = new byte[52];
+            players = new Player[playerCount];
 
-            byte[] deck = new byte[52];
-            int c = 0;
+            List<byte> deck = new List<byte>(52);
+            int skip = 52 % playerCount;
             //Fill deck with correct value cards
             for (byte s = 0; s < 4; s++)
             {
                 for (byte n = 1; n < 14; n++)
                 {
-                    deck[c++] = n;
+                    if (skip > 0)
+                    {
+                        skip--;
+                        continue;
+                    }
+                    deck.Add(n);
                 }
             }
 
@@ -53,11 +91,56 @@ namespace WarSimulator
             }
 
             //Deal
-            for (int i = 0; i < 26; i++)
+            int p;
+            for (int i = 0; i < deck.Count; i+=playerCount)
             {
-                p1Hand[i] = deck[i];
-                p2Hand[i] = deck[26 + i];
+                for (p = 0; i < playerCount; p++)
+                {
+                    players[p].hand.Push(deck[i + p]);
+                }
             }
         }
+    }
+
+    class Player {
+        private Random random = new Random();
+        public Stack<byte> hand;
+        public List<byte> spoils;
+        public ushort score;
+
+        public byte Draw()
+        {
+            //Draw a single cards from the hand, shuffle in spoils if needed
+            if (hand.Count == 0)
+            {
+                if (spoils.Count == 0)
+                    throw new RanOut();
+                ShuffleInSpoils();
+            }
+            return hand.Pop();
+        }
+
+        private void ShuffleInSpoils()
+        {
+            //Hand is empty, shuffle spoils into hand
+            int j;
+            for (int i = spoils.Count; i > 0; i--)
+            {
+                j = random.Next(i);
+                byte t = spoils[i];
+                spoils[i] = spoils[j];
+                spoils[j] = t;
+            }
+            for (int i = 0; i < spoils.Count; i++)
+                hand.Push(spoils[i]);
+            spoils.Clear();
+        }
+    
+    }
+
+    public class RanOut : Exception
+    {
+        //Thrown when player should draw a card, but both hand and spoils pile is empty
+        public RanOut() { }
     }
 }
