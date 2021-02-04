@@ -15,7 +15,8 @@ namespace WarSimulator
 
 
         //Game variables
-        Player[] players;
+        List<Player> players;
+        int remainingPlayers;
 
         public Simulator(int playerCount, int gameCount)
         {
@@ -27,8 +28,10 @@ namespace WarSimulator
         {
             for (int g = 0; g < gameCount; g++)
             {
+                Console.WriteLine("Simulating new game");
                 InitGame();
                 gameLengths[g] = SimulateGame();
+                Console.WriteLine("Game lasted {0} rounds", gameLengths[g]);
             }
         }
 
@@ -36,24 +39,50 @@ namespace WarSimulator
         {
             //Hands have already been dealt, run game until one wins
             int rounds = 0;
-            bool existsWinner = false;
-            while (!existsWinner)
+            while (remainingPlayers > 1)
             {
+                Console.WriteLine("New round");
                 rounds++;
 
-                byte[] drawnCards = new byte[playerCount];
-                for (int i = 0; i < playerCount; i++)
+                //Start by drawing cards, players without anyting to draw are eliminated
+                Dictionary<byte, List<Player>> drawnCards = new Dictionary<byte, List<Player>>();
+                for (int i = 0; i < remainingPlayers; i++)
                 {
-                    try
+                    byte card = players[i].Draw();
+                    if (card == 0)
                     {
-                        drawnCards[i] = players[i].Draw();
-                    } catch (RanOut e)
+                        Console.WriteLine("Player {0} out", players[i].id);
+                        players.RemoveAt(i--);
+                        remainingPlayers--;
+                    } else
                     {
-
+                        List<Player> same;
+                        bool found = drawnCards.TryGetValue(card, out same);
+                        if (!found) drawnCards.Add(card, new List<Player>());
+                        drawnCards[card].Add(players[i]);
                     }
                 }
 
+                //Find largest no-duplicate winner
+                Player winner = null;
+                byte largest = 0;
+                List<byte> spoils = new List<byte>();
+                foreach (KeyValuePair<byte, List<Player>> kvp in drawnCards)
+                {
+                    if (kvp.Value.Count == 1)
+                    {
+                        spoils.Add(kvp.Key);
+                        if (kvp.Key > largest) largest = kvp.Key;
+                        winner = kvp.Value[0];
+                    }
+                }
+                if (winner != null) winner.AddToSpoils(spoils);
 
+                    foreach (KeyValuePair<byte, List<Player>> kvp in drawnCards)
+                {
+                    //textBox3.Text += ("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+                    Console.WriteLine("Key = {0}, Value = {1}", kvp.Key, kvp.Value.Count);
+                }
 
             }
             return rounds;
@@ -61,9 +90,11 @@ namespace WarSimulator
 
         private void InitGame()
         {
-            players = new Player[playerCount];
+            players = new List<Player>(playerCount);
             for (int i = 0; i < playerCount; i++)
-                players[i] = new Player();
+                players.Add(new Player(i));
+
+            remainingPlayers = playerCount;
 
             List<byte> deck = new List<byte>(52);
             int skip = 52 % playerCount;
@@ -105,10 +136,16 @@ namespace WarSimulator
     }
 
     class Player {
+        public int id;
         private Random random = new Random();
         public Stack<byte> hand = new Stack<byte>();
         public List<byte> spoils = new List<byte>();
         public ushort score = 0;
+
+        public Player(int id)
+        {
+            this.id = id;
+        }
 
         public byte Draw()
         {
@@ -116,7 +153,7 @@ namespace WarSimulator
             if (hand.Count == 0)
             {
                 if (spoils.Count == 0)
-                    throw new RanOut();
+                    return 0;
                 ShuffleInSpoils();
             }
             return hand.Pop();
@@ -126,7 +163,7 @@ namespace WarSimulator
         {
             //Hand is empty, shuffle spoils into hand
             int j;
-            for (int i = spoils.Count; i > 0; i--)
+            for (int i = spoils.Count-1; i > 0; i--)
             {
                 j = random.Next(i);
                 byte t = spoils[i];
@@ -137,12 +174,11 @@ namespace WarSimulator
                 hand.Push(spoils[i]);
             spoils.Clear();
         }
-    
-    }
 
-    public class RanOut : Exception
-    {
-        //Thrown when player should draw a card, but both hand and spoils pile is empty
-        public RanOut() { }
+        public void AddToSpoils(List<byte> cards)
+        {
+            spoils.AddRange(cards);
+        }
+    
     }
 }
