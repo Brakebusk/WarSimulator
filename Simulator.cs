@@ -1,15 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace WarSimulator
 {
     class Simulator
     {
+        //Simulator constants
         private int reportRate;
-        private bool verbose = false;
+        private bool verbose;
         private int gameCount;
         private int playerCount;
+        private int suits; //Default 4
+        private int cardsPerSuit; //Default 13 cards per suit
+        private int numCards; //suits*cardsPerSuit-(suits*cardsPerSuit % playerCount)
         private Random random = new Random();
 
         //Simlation statistics
@@ -20,13 +23,20 @@ namespace WarSimulator
         List<Player> players;
         int remainingPlayers;
 
-        public Simulator(int playerCount, int gameCount, bool verbose=false)
+        public Simulator(int playerCount, int gameCount, int suits=4, int cardsPerSuit=13, bool verbose=false)
         {
             this.playerCount = playerCount;
             this.gameCount = gameCount;
             this.gameLengths = new int[gameCount];
+            this.suits = suits;
+            this.cardsPerSuit = cardsPerSuit;
             this.verbose = verbose;
             this.reportRate = gameCount / 100;
+
+            if (playerCount > suits*cardsPerSuit)
+            {
+                throw new NotEnoughCardsInDeckException("There cannot be more players than cards in the deck");
+            }
         }
         public void Simulate()
         {
@@ -127,7 +137,7 @@ namespace WarSimulator
                 }
 
             }
-            System.Diagnostics.Debug.Assert(players[0].CardCount() == 52);
+            System.Diagnostics.Debug.Assert(players[0].CardCount() == numCards);
             if (verbose) Console.WriteLine("Player {0} won the game", players[0].id);
             return rounds;
         }
@@ -243,13 +253,14 @@ namespace WarSimulator
 
             //Shuffle (fisher-yates)
             int j;
-            for (int i = 51; i > 0; i--)
+            for (int i = deck.Count-1; i > 0; i--)
             {
                 j = random.Next(i);
                 byte t = deck[i];
                 deck[i] = deck[j];
                 deck[j] = t;
             }
+            numCards = deck.Count;
 
             //Deal
             int p;
@@ -264,55 +275,15 @@ namespace WarSimulator
         }
     }
 
-    class Player {
-        public int id;
-        private Random random = new Random();
-        public Stack<byte> hand = new Stack<byte>();
-        public List<byte> spoils = new List<byte>();
-        public int initialScore = 0;
-
-        public Player(int id)
+    public class NotEnoughCardsInDeckException : Exception
+    {
+        public NotEnoughCardsInDeckException()
         {
-            this.id = id;
+
         }
 
-        public byte Draw()
+        public NotEnoughCardsInDeckException(string message) : base(message)
         {
-            //Draw a single cards from the hand, shuffle in spoils if needed
-            if (hand.Count == 0)
-            {
-                if (spoils.Count == 0)
-                    return 0;
-                ShuffleInSpoils();
-            }
-            return hand.Pop();
         }
-
-        private void ShuffleInSpoils()
-        {
-            //Hand is empty, shuffle spoils into hand
-            int j;
-            for (int i = spoils.Count-1; i > 0; i--)
-            {
-                j = random.Next(i);
-                byte t = spoils[i];
-                spoils[i] = spoils[j];
-                spoils[j] = t;
-            }
-            for (int i = 0; i < spoils.Count; i++)
-                hand.Push(spoils[i]);
-            spoils.Clear();
-        }
-
-        public void AddToSpoils(List<byte> cards)
-        {
-            spoils.AddRange(cards);
-        }
-
-        public int CardCount()
-        {
-            return hand.Count + spoils.Count;
-        }
-    
     }
 }
