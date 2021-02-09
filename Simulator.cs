@@ -106,10 +106,10 @@ namespace WarSimulator
         public void PrintStatistics()
         {
             Array.Sort(gameLengths);
-            int mean = 0;
+            ulong mean = 0;
             for (int i = 0; i < GAMECOUNT; i++)
-                mean += gameLengths[i];
-            mean /= GAMECOUNT;
+                mean += (uint) gameLengths[i];
+            mean /= (uint) GAMECOUNT;
             int median = 0;
             if (GAMECOUNT % 2 == 0)
             {
