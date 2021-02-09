@@ -2,7 +2,7 @@
   "profiles": {
     "WarSimulator": {
       "commandName": "Project",
-      "commandLineArgs": "4 1000000"
+      "commandLineArgs": "2 100000"
     }
   }
 }
