@@ -33,3 +33,4 @@ If <n games> is 1, program will print detailed information about each round.
 | Processor                     | Games simulated | Duration     | Average Games/second | Notes                                 |
 | ------------------------------| --------------- | ------------ | -------------------- | ------------------------------------- |
 | Intel Core i7 4820k @ 4.3 GHz | 10 000 000      | 4 min 23 sec | 38023 G/s            | 2 players, 4 suits, 13 cards per suit |
+| Same                          | 10 000 000      | 6 min 3 sec  | 27548 G/s            | 4 players, 4 suits, 13 cards per suit |
