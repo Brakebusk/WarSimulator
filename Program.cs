@@ -7,7 +7,6 @@ namespace WarSimulator
         static void Main(string[] args)
         {
             int gameCount, playerCount, suits, cardsPerSuite;
-            bool verbose;
             try
             {
                 if (args[0] == "help") Help();
@@ -15,16 +14,12 @@ namespace WarSimulator
                 gameCount = int.Parse(args[1]);
                 
                 //Parse optional arguments
-                verbose = false;
                 suits = 4;
                 cardsPerSuite = 13;
                 for (int a = 2; a < args.Length; a++)
                 {
                     switch (args[a])
                     {
-                        case "-v":
-                            verbose = true;
-                            break;
                         case "-s":
                             suits = int.Parse(args[++a]);
                             break;
@@ -44,7 +39,7 @@ namespace WarSimulator
             Console.WriteLine("Starting simulation of {0} players playing {1} games using a deck with {2} suits and {3} cards per suit.", playerCount, gameCount, suits, cardsPerSuite);
             try
             {
-                Simulator simulator = new Simulator(playerCount, gameCount, suits, cardsPerSuite, verbose);
+                Simulator simulator = new Simulator(playerCount, gameCount, suits, cardsPerSuite);
                 simulator.Simulate();
                 simulator.PrintStatistics();
             } catch (NotEnoughCardsInDeckException e)
@@ -60,15 +55,14 @@ namespace WarSimulator
 
         static void Usage()
         {
-            Console.WriteLine("Usage: WarSimulator.exe <n players> <n games> [-v] [-s <n>] [-c <n>]");
+            Console.WriteLine("Usage: WarSimulator.exe <n players> <n games> [-s <n>] [-c <n>]");
             System.Environment.Exit(1);
         }
 
         static void Help()
         {
-            string helpString = @"Usage: WarSimulator.exe <n players> <n games> [-v] [-s <n>] [-c <n>]
+            string helpString = @"Usage: WarSimulator.exe <n players> <n games> [-s <n>] [-c <n>]
 Optional arguments:
--v: Verbose flag. Print information about each simulated game and round
 -s <n>: Sets number of suits in deck. Default 4
 -c <n>: Sets number of cards per suit in deck. Default 13.";
             Console.WriteLine(helpString);

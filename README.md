@@ -4,14 +4,15 @@ Simulates the card game War
 
 ## Running the simulation
 ```
-Usage: WarSimulator.exe <n players> <n games> [-v] [-s <n>] [-c <n>]
+Usage: WarSimulator.exe <n players> <n games> [-s <n>] [-c <n>]
 
 Arguments:
   <n players> Number of players to simulate per game. Minimum 2
   <n games>   Number of games to simulate
-  -v          Verbose flag. Prints detailed information when simulating each game
   -s <n>      Number of suits in a game's deck. Default 4
   -c <n>      Number of cards per suit. Default 13
+
+If <n games> is 1, program will print detailed information about each round.
   ```
 
 ## Game rules
