@@ -16,6 +16,7 @@ namespace WarSimulator
 
         //Simlation statistics
         private int[] gameLengths;
+        private int[] progress;
 
         public Simulator(int playercount, int gamecount, int suits=4, int cardspersuit=13)
         {
@@ -44,7 +45,7 @@ namespace WarSimulator
             if (GAMECOUNT < 100)
             {
                 Console.WriteLine("Using 1 thread");
-                SimulationWorker worker = new SimulationWorker(PLAYERCOUNT, GAMECOUNT, SUITS, CARDSPERSUIT, gameLengths, 0);
+                SimulationWorker worker = new SimulationWorker(0, new int[1], PLAYERCOUNT, GAMECOUNT, SUITS, CARDSPERSUIT, gameLengths, 0, VERBOSE);
                 Thread thread = new Thread(new ThreadStart(worker.Simulate));
                 thread.Start();
                 thread.Join();
@@ -53,20 +54,47 @@ namespace WarSimulator
                 int threadCount = Environment.ProcessorCount;
                 Thread[] workers = new Thread[threadCount];
                 int sliceSize = GAMECOUNT / threadCount;
+                progress = new int[threadCount];
                 Console.WriteLine("Using {0} threads", threadCount);
                 for (int i = 0; i < threadCount; i++)
                 {
                     int games = sliceSize;
                     if (i == threadCount - 1) games = GAMECOUNT - (i * sliceSize);
-                    SimulationWorker worker = new SimulationWorker(PLAYERCOUNT, games, SUITS, CARDSPERSUIT, gameLengths, i * sliceSize);
+                    SimulationWorker worker = new SimulationWorker(i, progress, PLAYERCOUNT, games, SUITS, CARDSPERSUIT, gameLengths, i * sliceSize, VERBOSE);
                     Thread thread = new Thread(new ThreadStart(worker.Simulate));
                     workers[i] = thread;
                     thread.Start();
                 }
 
-                for (int i = 0; i < threadCount; i++)
+                var watch = new System.Diagnostics.Stopwatch();
+                watch.Start();
+                bool finished = false;
+                int[] prevProgress = new int[threadCount];
+                while (!finished)
                 {
-                    workers[i].Join();
+                    finished = true;
+                    for (int i = 0; i < threadCount; i++)
+                    {
+                        if (!workers[i].Join(1)) finished = false;
+                    }
+                    if (!finished)
+                    {
+                        Thread.Sleep(1000);
+                        int gamesSinceLast = 0;
+                        int totalProgress = 0;
+                        for (int i = 0; i < threadCount; i++)
+                        {
+                            int tProg = progress[i];
+                            gamesSinceLast += tProg - prevProgress[i];
+                            prevProgress[i] = tProg;
+                            totalProgress += tProg;
+                        }
+
+                        long gPerS = 1000 * gamesSinceLast / watch.ElapsedMilliseconds;
+                        Console.Write("{0}% progress ({1} games/s)\r", Math.Round((double) (100 * totalProgress / GAMECOUNT), 1), gPerS);
+                        watch.Restart();
+
+                    }
                 }
                 Console.WriteLine("Simulation completed");
             }
@@ -105,12 +133,14 @@ namespace WarSimulator
 
         private class SimulationWorker
         {
+            int id;
+            int[] progress;
             int PLAYERCOUNT;
             int SUITS;
             int CARDSPERSUIT;
             int NUMCARDS;
             int GAMES;
-            bool VERBOSE = false;
+            bool VERBOSE;
             Random random = new Random();
 
             int[] gameLengths;
@@ -120,12 +150,15 @@ namespace WarSimulator
             List<Player> players;
             int remainingPlayers;
 
-            public SimulationWorker(int playercount, int games, int suits, int cardspersuit, int[] gameLengths, int sliceStart)
+            public SimulationWorker(int id, int[] progress, int playercount, int games, int suits, int cardspersuit, int[] gameLengths, int sliceStart, bool verbose)
             {
+                this.id = id;
+                this.progress = progress;
                 PLAYERCOUNT = playercount;
                 SUITS = suits;
                 CARDSPERSUIT = cardspersuit;
                 GAMES = games;
+                VERBOSE = verbose;
 
                 this.gameLengths = gameLengths;
                 this.sliceStart = sliceStart;
@@ -135,6 +168,7 @@ namespace WarSimulator
             {
                 for (int g = 0; g < GAMES; g++)
                 {
+                    progress[id] = g;
                     if (VERBOSE) Console.WriteLine("Simulating new game");
                     InitGame();
                     gameLengths[sliceStart + g] = SimulateGame();
