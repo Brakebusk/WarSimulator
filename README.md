@@ -4,7 +4,7 @@ Simulates the card game War
 
 ## Running the simulation
 ```
-Usage: WarSimulator.exe \<n players> \<n games> [-v] [-s <n>] [-c <n>]
+Usage: WarSimulator.exe <n players> <n games> [-v] [-s <n>] [-c <n>]
 
 Arguments:
   <n players> Number of players to simulate per game. Minimum 2
