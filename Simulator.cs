@@ -42,6 +42,7 @@ namespace WarSimulator
         }
         public void Simulate()
         {
+            //Only do multithreaded simulation if there are less than 100 games to simulate
             if (GAMECOUNT < 100)
             {
                 Console.WriteLine("Using 1 thread");
@@ -51,6 +52,7 @@ namespace WarSimulator
                 thread.Join();
             } else
             {
+                //Initialize all simulation threads
                 int threadCount = Environment.ProcessorCount;
                 Thread[] workers = new Thread[threadCount];
                 int sliceSize = GAMECOUNT / threadCount;
@@ -66,6 +68,7 @@ namespace WarSimulator
                     thread.Start();
                 }
 
+                //Wait for all threads to finish, periodically polling for progress information to print
                 var watch = new System.Diagnostics.Stopwatch();
                 watch.Start();
                 bool finished = false;

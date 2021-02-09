@@ -28,3 +28,8 @@ If <n games> is 1, program will print detailed information about each round.
   - If at any point a player's hand is empty, they must shuffle their spoil heap and place the cards in their draw pile.
     - If the spoil heap is also empty and the player is out of cards, they have lost
 - If after a completed round one of the players possess all cards, they have won the game
+
+## Simulation speed
+| Processor                     | Games simulated | Duration     | Average Games/second | Notes                                 |
+| ------------------------------| --------------- | ------------ | -------------------- | ------------------------------------- |
+| Intel Core i7 4820k @ 4.3 GHz | 10 000 000      | 4 min 23 sec | 38023 G/s            | 2 players, 4 suits, 13 cards per suit |
