@@ -5,8 +5,8 @@ class Player
 {
     public int id;
     private Random random = new Random();
-    public Stack<byte> hand = new Stack<byte>();
-    public List<byte> spoils = new List<byte>();
+    public Stack<int> hand = new Stack<int>();
+    public List<int> spoils = new List<int>();
     public int initialScore = 0;
 
     public Player(int id)
@@ -14,7 +14,7 @@ class Player
         this.id = id;
     }
 
-    public byte Draw()
+    public int Draw()
     {
         //Draw a single cards from the hand, shuffle in spoils if needed
         if (hand.Count == 0)
@@ -33,7 +33,7 @@ class Player
         for (int i = spoils.Count - 1; i > 0; i--)
         {
             j = random.Next(i);
-            byte t = spoils[i];
+            int t = spoils[i];
             spoils[i] = spoils[j];
             spoils[j] = t;
         }
@@ -42,9 +42,14 @@ class Player
         spoils.Clear();
     }
 
-    public void AddToSpoils(List<byte> cards)
+    public void AddToSpoils(List<int> cards)
     {
         spoils.AddRange(cards);
+    }
+
+    public void AddToSpoils(int card)
+    {
+        spoils.Add(card);
     }
 
     public int CardCount()

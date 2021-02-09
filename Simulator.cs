@@ -31,7 +31,9 @@ namespace WarSimulator
             this.suits = suits;
             this.cardsPerSuit = cardsPerSuit;
             this.verbose = verbose;
-            this.reportRate = gameCount / 100;
+            if (gameCount >= 100)
+                this.reportRate = gameCount / 100;
+            else this.reportRate = 1;
 
             if (playerCount > suits*cardsPerSuit)
             {
@@ -71,16 +73,17 @@ namespace WarSimulator
         {
             //Hands have already been dealt, run game until one wins
             int rounds = 0;
+            int roundsWithoutWinner = 0; //A game may end up in an unresolvable state depending on the total number of cards compared to players
             while (remainingPlayers > 1)
             {
                 if (verbose) Console.WriteLine("New round");
                 rounds++;
 
                 //Start by drawing cards, players without anyting to draw are eliminated
-                Dictionary<byte, List<Player>> drawnCards = new Dictionary<byte, List<Player>>();
+                Dictionary<int, List<Player>> drawnCards = new Dictionary<int, List<Player>>();
                 for (int i = 0; i < remainingPlayers; i++)
                 {
-                    byte card = players[i].Draw();
+                    int card = players[i].Draw();
                     if (verbose) Console.WriteLine("Player {0} ({1} remaining) drew {2}", players[i].id, players[i].CardCount(), card);
                     if (card == 0)
                     {
@@ -96,11 +99,11 @@ namespace WarSimulator
                     }
                 }
 
-                //Find largest no-duplicate winner and handle any wars if they are encountered
+                //Find largest winner and handle any wars if they are encountered
                 Player winner = null;
-                byte largest = 0;
-                List<byte> spoils = new List<byte>();
-                foreach (KeyValuePair<byte, List<Player>> kvp in drawnCards)
+                int largest = 0;
+                List<int> spoils = new List<int>();
+                foreach (KeyValuePair<int, List<Player>> kvp in drawnCards)
                 {
                     if (kvp.Value.Count == 1)
                     {
@@ -113,27 +116,38 @@ namespace WarSimulator
                     } else
                     {
                         //Found war between kvp.Value.Count number of players
+                        for (int p = 0; p < kvp.Value.Count; p++)
+                            spoils.Add(kvp.Key);
                         Player warWinner = War(kvp.Value);
-                        if (warWinner == null)
+
+                        if (warWinner != null && kvp.Key > largest)
                         {
-                            //No players could play the war, just split the spoils
-                            List<byte> ret = new List<byte>(1);
-                            ret.Add(kvp.Key);
-                            for (int p = 0; p < kvp.Value.Count; p++)
-                                kvp.Value[p].AddToSpoils(ret);
-                        } else
-                        {
-                            //Give war winner the war starting cards
-                            List<byte> warSpoils = new List<byte>(kvp.Value.Count);
-                            for (int c = 0; c < kvp.Value.Count; c++) warSpoils.Add(kvp.Key);
-                            warWinner.AddToSpoils(warSpoils);
+                            winner = warWinner;
+                            largest = kvp.Key;                            
                         }
                     }
                 }
                 if (winner != null)
                 {
                     if (verbose) Console.WriteLine("Round winner: {0}", winner.id);
+                    roundsWithoutWinner = 0;
                     winner.AddToSpoils(spoils);
+                } else
+                {
+                    if (++roundsWithoutWinner > 100)
+                    {
+                        //Abort game. Likely cannot be resolved
+                        return 0;
+                    }
+                    //No winner could be determined. Will happen if all remaining players end up in wars that cannot be resolved
+                    foreach (KeyValuePair<int, List<Player>> kvp in drawnCards)
+                    {
+                        //Return drawn cards to players
+                        for (int p = 0; p < kvp.Value.Count; p++)
+                        {
+                            kvp.Value[p].AddToSpoils(kvp.Key);
+                        }
+                    }
                 }
 
             }
@@ -154,14 +168,14 @@ namespace WarSimulator
                 }
                 Console.WriteLine("]");
             }
-            Dictionary<byte, List<Player>> champions = new Dictionary<byte, List<Player>>();
-            List<byte>[] stakes = new List<byte>[warPlayers.Count];
+            Dictionary<int, List<Player>> champions = new Dictionary<int, List<Player>>();
+            List<int>[] stakes = new List<int>[warPlayers.Count];
             for (int i = 0; i < warPlayers.Count; i++)
-                stakes[i] = new List<byte>();
+                stakes[i] = new List<int>();
             
             for (int p = 0; p < warPlayers.Count; p++)
             {
-                byte champion = warPlayers[p].Draw();
+                int champion = warPlayers[p].Draw();
                 if (verbose) Console.WriteLine("Player {0} has champion {1}", warPlayers[p].id, champion);
                 if (champion > 0)
                 {
@@ -179,7 +193,7 @@ namespace WarSimulator
                 //Draw stake
                 for (int s = 0; s < 3; s++)
                 {
-                    byte stake = warPlayers[p].Draw();
+                    int stake = warPlayers[p].Draw();
                     if (stake > 0)
                     {
                         stakes[p].Add(stake);
@@ -195,8 +209,8 @@ namespace WarSimulator
             //this war, while the others fight the next war independently
             Player warWinner = null;
 
-            byte largest = 0;
-            foreach (KeyValuePair<byte, List<Player>> kvp in champions)
+            int largest = 0;
+            foreach (KeyValuePair<int, List<Player>> kvp in champions)
             {
                 if (kvp.Value.Count > 1)
                 {
@@ -235,12 +249,12 @@ namespace WarSimulator
 
             remainingPlayers = playerCount;
 
-            List<byte> deck = new List<byte>(52);
-            int skip = 52 % playerCount;
+            List<int> deck = new List<int>(suits * cardsPerSuit);
+            int skip = (suits * cardsPerSuit) % playerCount;
             //Fill deck with correct value cards
-            for (byte s = 0; s < 4; s++)
+            for (int s = 0; s < suits; s++)
             {
-                for (byte n = 1; n < 14; n++)
+                for (int n = 1; n < cardsPerSuit + 1; n++)
                 {
                     if (skip > 0)
                     {
@@ -256,7 +270,7 @@ namespace WarSimulator
             for (int i = deck.Count-1; i > 0; i--)
             {
                 j = random.Next(i);
-                byte t = deck[i];
+                int t = deck[i];
                 deck[i] = deck[j];
                 deck[j] = t;
             }
