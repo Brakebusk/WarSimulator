@@ -39,6 +39,10 @@ namespace WarSimulator
             {
                 throw new NotEnoughCardsInDeckException("There cannot be more players than cards in the deck");
             }
+            if (playerCount < 2)
+            {
+                throw new InvalidPlayerCountException("There must be at least 2 players");
+            }
         }
         public void Simulate()
         {
@@ -213,8 +217,7 @@ namespace WarSimulator
                     stakes[p].Add(champion);
                 } else
                 {
-                    //Player have no champion and is thus eliminated
-                    //warPlayers.RemoveAt(p--);
+                    //Player has no champion
                     continue;
                 }
                 //Draw stake
@@ -325,6 +328,19 @@ namespace WarSimulator
 
         public NotEnoughCardsInDeckException(string message) : base(message)
         {
+        }
+    }
+
+    public class InvalidPlayerCountException : Exception
+    {
+        public InvalidPlayerCountException()
+        {
+
+        }
+
+        public InvalidPlayerCountException(string message) : base(message)
+        {
+
         }
     }
 }

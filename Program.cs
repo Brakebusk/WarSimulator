@@ -51,6 +51,10 @@ namespace WarSimulator
             {
                 Console.WriteLine("Failure: " + e.Message);
                 System.Environment.Exit(1);
+            } catch (InvalidPlayerCountException e)
+            {
+                Console.WriteLine("Failure: " + e.Message);
+                System.Environment.Exit(1);
             }
         }
 
