@@ -45,28 +45,43 @@ namespace WarSimulator
             int p = 0;
             for (int g = 0; g < gameCount; g++)
             {
-                if (g % reportRate == 0) Console.WriteLine("{0}% progress", p++);
+                if (!verbose && g % reportRate == 0) Console.Write("{0}% progress\r", p++);
                 if (verbose) Console.WriteLine("Simulating new game");
                 InitGame();
                 gameLengths[g] = SimulateGame();
                 if (verbose) Console.WriteLine("Game lasted {0} rounds", gameLengths[g]);
             }
+            Console.WriteLine("Simulation completed");
         }
 
         public void PrintStatistics()
         {
             Array.Sort(gameLengths);
-            for (int g = 0; g < gameLengths.Length; g++)
+            int mean = 0;
+            for (int i = 0; i < gameCount; i++)
+                mean += gameLengths[i];
+            mean /= gameCount;
+            int median = 0;
+            if (gameCount % 2 == 0)
             {
-                int sel = gameLengths[g];
-                int sum = 1;
-                while (g+sum < gameLengths.Length && gameLengths[g+sum] == sel)
+                median = (gameLengths[gameCount / 2] + gameLengths[(gameCount / 2) - 1]) / 2;
+            } else
+                median = gameLengths[gameCount / 2];
+            Console.WriteLine("Average game length of {0} simulated games: {1} (mean: {2})", gameCount, mean, median);
+
+            int shortest = 0;
+            foreach (var l in gameLengths)
+            {
+                if (l > 0)
                 {
-                    sum++;
+                    shortest = l;
+                    break;
                 }
-                Console.WriteLine("{0}: {1}", sel, sum);
-                g += sum-1;
             }
+            int longest = gameLengths[gameCount - 1];
+
+            Console.WriteLine("Shortest game: {0} rounds", shortest);
+            Console.WriteLine("Longest game: {0} rounds", longest);
         }
 
         private int SimulateGame()
@@ -123,7 +138,7 @@ namespace WarSimulator
                         if (warWinner != null && kvp.Key > largest)
                         {
                             winner = warWinner;
-                            largest = kvp.Key;                            
+                            largest = kvp.Key;
                         }
                     }
                 }
@@ -134,12 +149,12 @@ namespace WarSimulator
                     winner.AddToSpoils(spoils);
                 } else
                 {
+                    //No round winner could be determined. Will happen if all remaining players end up in wars that cannot be resolved
                     if (++roundsWithoutWinner > 100)
                     {
                         //Abort game. Likely cannot be resolved
                         return 0;
                     }
-                    //No winner could be determined. Will happen if all remaining players end up in wars that cannot be resolved
                     foreach (KeyValuePair<int, List<Player>> kvp in drawnCards)
                     {
                         //Return drawn cards to players
