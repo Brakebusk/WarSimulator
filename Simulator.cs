@@ -42,10 +42,22 @@ namespace WarSimulator
         }
         public void Simulate()
         {
-            int p = 0;
+            var watch = new System.Diagnostics.Stopwatch();
+            watch.Start();
+            int percent = 0;
             for (int g = 0; g < gameCount; g++)
             {
-                if (!verbose && g % reportRate == 0) Console.Write("{0}% progress\r", p++);
+                if (!verbose && g % reportRate == 0)
+                {
+                    //Print simulation progress information at fixed interval
+                    if (watch.ElapsedMilliseconds > 0)
+                    {
+                        long gPerS = 1000 * reportRate / watch.ElapsedMilliseconds;
+                        Console.Write("{0}% progress ({1} games/s)\r", percent++, gPerS);
+                    }
+                    else Console.Write("{0}% progress\r", percent++);
+                    watch.Restart();
+                }
                 if (verbose) Console.WriteLine("Simulating new game");
                 InitGame();
                 gameLengths[g] = SimulateGame();
