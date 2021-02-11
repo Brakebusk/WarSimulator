@@ -13,16 +13,18 @@ namespace WarSimulator
         private int PLAYERCOUNT;
         private int SUITS; //Default 4
         private int CARDSPERSUIT; //Default 13 cards per suit
+        private int THREADCOUNT;
 
         //Simlation statistics
         private int[] gameLengths;
         private int[] progress;
 
-        public Simulator(int playercount, int gamecount, int suits=4, int cardspersuit=13)
+        public Simulator(int playercount, int gamecount, int threadcount, int suits=4, int cardspersuit=13)
         {
             //Initialize constants
             PLAYERCOUNT = playercount;
             GAMECOUNT = gamecount;
+            THREADCOUNT = Math.Min(threadcount, gamecount);
             gameLengths = new int[GAMECOUNT];
             SUITS = suits;
             CARDSPERSUIT = cardspersuit;
@@ -42,65 +44,53 @@ namespace WarSimulator
         }
         public void Simulate()
         {
-            //Only do multithreaded simulation if there are less than 100 games to simulate
-            if (GAMECOUNT < 100)
+            //Initialize all simulation threads
+            Thread[] workers = new Thread[THREADCOUNT];
+            int sliceSize = GAMECOUNT / THREADCOUNT;
+            progress = new int[THREADCOUNT];
+            Console.WriteLine("Using {0} threads", THREADCOUNT);
+            for (int i = 0; i < THREADCOUNT; i++)
             {
-                Console.WriteLine("Using 1 thread");
-                SimulationWorker worker = new SimulationWorker(0, new int[1], PLAYERCOUNT, GAMECOUNT, SUITS, CARDSPERSUIT, gameLengths, 0, VERBOSE);
+                int games = sliceSize;
+                if (i == THREADCOUNT - 1) games = GAMECOUNT - (i * sliceSize);
+                SimulationWorker worker = new SimulationWorker(i, progress, PLAYERCOUNT, games, SUITS, CARDSPERSUIT, gameLengths, i * sliceSize, VERBOSE);
                 Thread thread = new Thread(new ThreadStart(worker.Simulate));
+                workers[i] = thread;
                 thread.Start();
-                thread.Join();
-            } else
-            {
-                //Initialize all simulation threads
-                int threadCount = Environment.ProcessorCount;
-                Thread[] workers = new Thread[threadCount];
-                int sliceSize = GAMECOUNT / threadCount;
-                progress = new int[threadCount];
-                Console.WriteLine("Using {0} threads", threadCount);
-                for (int i = 0; i < threadCount; i++)
-                {
-                    int games = sliceSize;
-                    if (i == threadCount - 1) games = GAMECOUNT - (i * sliceSize);
-                    SimulationWorker worker = new SimulationWorker(i, progress, PLAYERCOUNT, games, SUITS, CARDSPERSUIT, gameLengths, i * sliceSize, VERBOSE);
-                    Thread thread = new Thread(new ThreadStart(worker.Simulate));
-                    workers[i] = thread;
-                    thread.Start();
-                }
-
-                //Wait for all threads to finish, periodically polling for progress information to print
-                var watch = new System.Diagnostics.Stopwatch();
-                watch.Start();
-                bool finished = false;
-                int[] prevProgress = new int[threadCount];
-                while (!finished)
-                {
-                    finished = true;
-                    for (int i = 0; i < threadCount; i++)
-                    {
-                        if (!workers[i].Join(1)) finished = false;
-                    }
-                    if (!finished)
-                    {
-                        Thread.Sleep(1000);
-                        int gamesSinceLast = 0;
-                        int totalProgress = 0;
-                        for (int i = 0; i < threadCount; i++)
-                        {
-                            int tProg = progress[i];
-                            gamesSinceLast += tProg - prevProgress[i];
-                            prevProgress[i] = tProg;
-                            totalProgress += tProg;
-                        }
-
-                        long gPerS = 1000 * gamesSinceLast / watch.ElapsedMilliseconds;
-                        Console.Write("{0}% progress ({1} games/s)\r", Math.Round((double) (100 * totalProgress / GAMECOUNT), 1), gPerS);
-                        watch.Restart();
-
-                    }
-                }
-                Console.WriteLine("Simulation completed");
             }
+
+            //Wait for all threads to finish, periodically polling for progress information to print
+            var watch = new System.Diagnostics.Stopwatch();
+            watch.Start();
+            bool finished = false;
+            int[] prevProgress = new int[THREADCOUNT];
+            while (!finished)
+            {
+                finished = true;
+                for (int i = 0; i < THREADCOUNT; i++)
+                {
+                    if (!workers[i].Join(1)) finished = false;
+                }
+                if (!finished)
+                {
+                    Thread.Sleep(1000);
+                    int gamesSinceLast = 0;
+                    int totalProgress = 0;
+                    for (int i = 0; i < THREADCOUNT; i++)
+                    {
+                        int tProg = progress[i];
+                        gamesSinceLast += tProg - prevProgress[i];
+                        prevProgress[i] = tProg;
+                        totalProgress += tProg;
+                    }
+
+                    long gPerS = 1000 * gamesSinceLast / watch.ElapsedMilliseconds;
+                    Console.Write("{0}% progress ({1} games/s)\r", Math.Round((double) (100 * totalProgress / GAMECOUNT), 1), gPerS);
+                    watch.Restart();
+
+                }
+            }
+            Console.WriteLine("Simulation completed");
         }
 
         public void PrintStatistics()

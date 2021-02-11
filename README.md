@@ -4,13 +4,14 @@ Simulates the card game War
 
 ## Running the simulation
 ```
-Usage: WarSimulator.exe <n players> <n games> [-s <n>] [-c <n>]
+Usage: WarSimulator.exe <n players> <n games> [-s <n>] [-c <n>] [-t <n>]
 
 Arguments:
-  <n players> Number of players to simulate per game. Minimum 2
-  <n games>   Number of games to simulate
-  -s <n>      Number of suits in a game's deck. Default 4
-  -c <n>      Number of cards per suit. Default 13
+  <n players> Number of players to simulate per game. Minimum 2.
+  <n games>   Number of games to simulate.
+  -s <n>      Number of suits in a game's deck. Default 4.
+  -c <n>      Number of cards per suit. Default 13.
+  -t <n>      Number of threads to use. Defaults to processor logical core count.
 
 If <n games> is 1, program will print detailed information about each round.
   ```
